@@ -1,0 +1,5 @@
+training_data/*
+*.pyc
+*.pyo
+
+.idea/

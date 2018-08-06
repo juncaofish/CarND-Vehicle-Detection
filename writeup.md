@@ -1,7 +1,4 @@
-## Writeup Template
-### You can use this file as a template for your writeup if you want to submit it as a markdown file, but feel free to use some other method and submit a pdf if you prefer.
-
----
+## Writeup
 
 **Vehicle Detection Project**
 
@@ -15,13 +12,13 @@ The goals / steps of this project are the following:
 * Estimate a bounding box for vehicles detected.
 
 [//]: # (Image References)
-[image1]: ./examples/car_not_car.png
-[image2]: ./examples/HOG_example.jpg
+[image1]: ./output_images/car_not_car.png
+[image2]: ./output_images/HOG_example.png
 [image3]: ./examples/sliding_windows.jpg
-[image4]: ./examples/sliding_window.jpg
-[image5]: ./examples/bboxes_and_heat.png
-[image6]: ./examples/labels_map.png
-[image7]: ./examples/output_bboxes.png
+[image4]: ./output_images/sliding_window.png
+[image5]: ./output_images/heatmap.png
+[image6]: ./output_images/label_heatmap.png
+[image7]: ./output_images/bbox.png
 [video1]: ./project_video.mp4
 
 ## [Rubric](https://review.udacity.com/#!/rubrics/513/view) Points
@@ -38,34 +35,78 @@ You're reading it!
 
 #### 1. Explain how (and identify where in your code) you extracted HOG features from the training images.
 
-The code for this step is contained in the first code cell of the IPython notebook (or in lines # through # of the file called `some_file.py`).  
+The code for this step is contained in lines #58 through #70 of the file called `utils.py`).  
 
-I started by reading in all the `vehicle` and `non-vehicle` images.  Here is an example of one of each of the `vehicle` and `non-vehicle` classes:
+I started by reading in all the `vehicle` and `non-vehicle` images.  Here is an example of 5 random choices from the `vehicle` and `non-vehicle` classes:
 
 ![alt text][image1]
 
 I then explored different color spaces and different `skimage.hog()` parameters (`orientations`, `pixels_per_cell`, and `cells_per_block`).  I grabbed random images from each of the two classes and displayed them to get a feel for what the `skimage.hog()` output looks like.
 
-Here is an example using the `YCrCb` color space and HOG parameters of `orientations=8`, `pixels_per_cell=(8, 8)` and `cells_per_block=(2, 2)`:
-
-
 ![alt text][image2]
+
+And also, I carry on a color transform (RGB2YCrCb) on the original image, and binned color features, as well as histograms of color are appended to the HOG feature vector. The operations could be found in convert_color(), bin_spatial() and color_hist() from the file `utils.py`.
 
 #### 2. Explain how you settled on your final choice of HOG parameters.
 
-I tried various combinations of parameters and...
+I tried various combinations of parameters and both the svm classifier accuracy and computational efficiency are considered. After various attemps, I chose the following parameters that were stored in conf.py:  
+
+```
+feature_params = {
+    "color_conversion": 'RGB2YCrCb',
+    "orient": 9,
+    "pix_per_cell": 8,
+    "cell_per_block": 2,
+    "hog_channel": "ALL",  # Can be 0, 1, 2, or "ALL"
+    "spatial_size": (32, 32),
+    "hist_bins": 32
+}
+```
 
 #### 3. Describe how (and identify where in your code) you trained a classifier using your selected HOG features (and color features if you used them).
 
-I trained a linear SVM using...
+To train a car vs non-car classifier, I take the following several steps:
+* Load the car and non-car image files and extract feature vectors into features list. 
+    ```
+    cars = glob.glob('training_data/vehicles/*/*.png')
+    not_cars = glob.glob('training_data/non-vehicles/*/*.png')
+
+    car_features = extract_features_from_files(cars, **feature_params)
+    notcar_features = extract_features_from_files(not_cars, **feature_params)
+
+    x = np.vstack((car_features, notcar_features)).astype(np.float64)
+    y = np.hstack((np.ones(len(car_features)), np.zeros(len(notcar_features))))
+    ```
+
+* Then, the data is splitted to actual training set and test set by 8:2. Furthermore, feature vectors are standardize in order to have all the features in a similar range and ease training.
+    ```
+    # Split up data into randomized training and test sets
+    rand_state = np.random.randint(0, 100)
+    x_train, x_test, y_train, y_test = train_test_split(
+        x, y, test_size=0.2, random_state=rand_state)
+
+    # Fit a per-column scaler
+    x_scaler = StandardScaler().fit(x_train)
+
+    # Apply the scaler to x
+    x_train = x_scaler.transform(x_train)
+    x_test = x_scaler.transform(x_test)
+    ```
+* Then, training the Linear SVM classifier is as easy as:
+    ```
+    # Use a linear SVC
+    svc = LinearSVC()
+    # Check the training time for the SVC
+    svc.fit(x_train, y_train)
+    ```
+* Finally, we can make a prediction on the test set with svc.score(X_test, y_test) to get the performance of the svm model. And the model is saved to a dumped pickle file so as to save time for future use.
+
 
 ### Sliding Window Search
 
 #### 1. Describe how (and identify where in your code) you implemented a sliding window search.  How did you decide what scales to search and how much to overlap windows?
 
-I decided to search random window positions at random scales all over the image and came up with this (ok just kidding I didn't actually ;):
-
-![alt text][image3]
+I started from searching the region of interest(y_start=400, y_stop=600) and to classify each window as suggested by the course instructor. The HOG features are computed only once for the whole region of interest, then subsampled at different scales in order to have the same effect of a multiscale search in a more computationally efficient way. This function find_cars is implemented in main.py. The performance decreases quickly as the overlap of the window increases as well as the scale multiplies.
 
 #### 2. Show some examples of test images to demonstrate how your pipeline is working.  What did you do to optimize the performance of your classifier?
 
@@ -77,7 +118,7 @@ Ultimately I searched on two scales using YCrCb 3-channel HOG features plus spat
 ### Video Implementation
 
 #### 1. Provide a link to your final video output.  Your pipeline should perform reasonably well on the entire project video (somewhat wobbly or unstable bounding boxes are ok as long as you are identifying the vehicles most of the time with minimal false positives.)
-Here's a [link to my video result](./project_video.mp4)
+Here's a [link to my video result](./output_project.mp4)
 
 
 #### 2. Describe how (and identify where in your code) you implemented some kind of filter for false positives and some method for combining overlapping bounding boxes.
@@ -86,17 +127,15 @@ I recorded the positions of positive detections in each frame of the video.  Fro
 
 Here's an example result showing the heatmap from a series of frames of video, the result of `scipy.ndimage.measurements.label()` and the bounding boxes then overlaid on the last frame of video:
 
-### Here are six frames and their corresponding heatmaps:
+### Here are three frames and their corresponding heatmaps:
 
 ![alt text][image5]
 
-### Here is the output of `scipy.ndimage.measurements.label()` on the integrated heatmap from all six frames:
+### Here is the output of `scipy.ndimage.measurements.label()` on the integrated heatmap from all three frames:
 ![alt text][image6]
 
 ### Here the resulting bounding boxes are drawn onto the last frame in the series:
 ![alt text][image7]
-
-
 
 ---
 
@@ -104,5 +143,9 @@ Here's an example result showing the heatmap from a series of frames of video, t
 
 #### 1. Briefly discuss any problems / issues you faced in your implementation of this project.  Where will your pipeline likely fail?  What could you do to make it more robust?
 
-Here I'll talk about the approach I took, what techniques I used, what worked and why, where the pipeline might fail and how I might improve it if I were going to pursue this project further.  
+When fine tuning with scale as well as window size, detection on test images is accepable. But when coming to the project video, the SVM approach turned out to be slightly frustrating, especially, on the false-positives. For many frames, non-car areas are marked with bounding box.
+
+Later, I might make some deep learning tries according to the latest network for object detection.
+
+
 
