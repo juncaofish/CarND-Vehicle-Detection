@@ -9,7 +9,7 @@ import scipy
 from utils import *
 from draw_detection import compute_heatmap_from_detections, draw_labeled_bounding_boxes, draw_boxes
 
-time_window = 5
+time_window = 3 
 
 hot_windows_history = collections.deque(maxlen=time_window)
 
@@ -18,8 +18,8 @@ def process_pipeline(frame, keep_state=True, visualize=False):
     global svc, feature_scaler, feature_params
     hot_windows = []
 
-    for scale in np.arange(1, 2.5, 0.25):
-        hot_windows += find_cars(frame, 400, 600, scale, svc, feature_scaler, feature_params)
+    for scale in np.arange(1, 3, 0.5):
+        hot_windows += find_cars(frame, 400, 600, 300, 1290, scale, svc, feature_scaler, feature_params)
 
     if keep_state:
         if hot_windows:
@@ -50,12 +50,14 @@ def process_pipeline(frame, keep_state=True, visualize=False):
     return img_detection
 
 
-def find_cars(img, ystart, ystop, scale, svc, scaler, feature_params):
+def find_cars(img, ystart, ystop, xstart, xstop, scale, svc, scaler, feature_params):
     """
     extract features using hog sub-sampling and make predictions
     :param img:
     :param ystart:
     :param ystop:
+    :param xstart:
+    :param xstop:
     :param scale:
     :param svc:
     :param scaler:
@@ -71,7 +73,7 @@ def find_cars(img, ystart, ystop, scale, svc, scaler, feature_params):
     img = img.astype(np.float32) / 255
     hot_windows = []
 
-    img_tosearch = img[ystart:ystop, :, :]
+    img_tosearch = img[ystart:ystop, xstart:xstop, :]
     ctrans_tosearch = convert_color(img_tosearch, conv='RGB2YCrCb')
     if scale != 1:
         imshape = ctrans_tosearch.shape
@@ -128,8 +130,8 @@ def find_cars(img, ystart, ystop, scale, svc, scaler, feature_params):
                 xbox_left = np.int(xleft * scale)
                 ytop_draw = np.int(ytop * scale)
                 win_draw = np.int(window * scale)
-                tl_corner_draw = (xbox_left, ytop_draw + ystart)
-                br_corner_draw = (xbox_left + win_draw, ytop_draw + win_draw + ystart)
+                tl_corner_draw = (xbox_left + xstart, ytop_draw + ystart)
+                br_corner_draw = (xbox_left + win_draw + xstart, ytop_draw + win_draw + ystart)
                 cv2.rectangle(draw_img, tl_corner_draw,
                               br_corner_draw, (0, 0, 255), 5)
                 hot_windows.append((tl_corner_draw, br_corner_draw))
@@ -150,9 +152,6 @@ if __name__ == '__main__':
     cell_per_block = feature_params["cell_per_block"]
     spatial_size = feature_params["spatial_size"]
     hist_bins = feature_params["hist_bins"]
-
-    ystart = 400
-    ystop = 656
 
     # test_img_dir = 'test_images'
     # images = glob.glob('test_images/*.jpg')

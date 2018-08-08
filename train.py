@@ -6,7 +6,8 @@ import matplotlib.image as mpimg
 import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
-from sklearn.svm import LinearSVC
+from sklearn.svm import SVC
+from sklearn.model_selection import GridSearchCV
 
 from conf import feature_params
 from utils import bin_spatial, color_hist, convert_color, get_hog_features
@@ -86,21 +87,23 @@ if __name__=='__main__':
     x_train = x_scaler.transform(x_train)
     x_test = x_scaler.transform(x_test)
 
-    # Use a linear SVC
-    svc = LinearSVC()
+    parameters = {'kernel': ('linear', 'rbf'), 'C': [0.5, 1, 5, 10]}
+    svc = SVC()
+    clf = GridSearchCV(svc, parameters)
     # Check the training time for the SVC
-    svc.fit(x_train, y_train)
+    clf.fit(x_train, y_train)
 
     # Check the score of the SVC
-    print('Test Accuracy of SVC = ', round(svc.score(x_test, y_test), 4))
+    print('Test Accuracy of SVC = ', round(clf.score(x_test, y_test), 4))
 
     # Check the prediction time for a single sample
     n_predict = 10
-    print('My SVC predicts: ', svc.predict(x_test[0:n_predict]))
+    print('My SVC predicts: ', clf.predict(x_test[0:n_predict]))
+    print('Params:', clf.get_params())
     print('For these', n_predict, 'labels: ', y_test[0:n_predict])
 
     dump_dict = dict()
-    dump_dict["svc"] = svc
+    dump_dict["svc"] = clf
     dump_dict["scaler"] = x_scaler
     dump_dict["feature_params"] = feature_params
 

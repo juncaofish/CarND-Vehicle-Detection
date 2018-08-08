@@ -92,21 +92,22 @@ To train a car vs non-car classifier, I take the following several steps:
     x_train = x_scaler.transform(x_train)
     x_test = x_scaler.transform(x_test)
     ```
-* Then, training the Linear SVM classifier is as easy as:
+* Then, training the SVM classifier with GridSearchCV using different parameters:
     ```
-    # Use a linear SVC
-    svc = LinearSVC()
+    parameters = {'kernel': ('linear', 'rbf'), 'C': [0.5, 1, 5, 10]}
+    svc = SVC()
+    clf = GridSearchCV(svc, parameters)
     # Check the training time for the SVC
-    svc.fit(x_train, y_train)
+    clf.fit(x_train, y_train)
     ```
-* Finally, we can make a prediction on the test set with svc.score(X_test, y_test) to get the performance of the svm model. And the model is saved to a dumped pickle file so as to save time for future use.
+* Finally, we can make a prediction on the test set with svc.score(X_test, y_test) to get the performance of the svm model. The final accuracy on test set reaches 99.52%, with kernel@rbf and c@1.0. The model is saved to a dumped pickle file so as to save time for future use.
 
 
 ### Sliding Window Search
 
 #### 1. Describe how (and identify where in your code) you implemented a sliding window search.  How did you decide what scales to search and how much to overlap windows?
 
-I started from searching the region of interest(y_start=400, y_stop=600) and to classify each window as suggested by the course instructor. The HOG features are computed only once for the whole region of interest, then subsampled at different scales in order to have the same effect of a multiscale search in a more computationally efficient way. This function find_cars is implemented in main.py. The performance decreases quickly as the overlap of the window increases as well as the scale multiplies.
+I started from searching the region of interest(y_start=400, y_stop=600, x_start=300) and to classify each window as suggested by the course instructor. The HOG features are computed only once for the whole region of interest, then subsampled at different scales in order to have the same effect of a multiscale search in a more computationally efficient way. This function find_cars is implemented in main.py. The performance decreases quickly as the overlap of the window increases as well as the scale multiplies.
 
 #### 2. Show some examples of test images to demonstrate how your pipeline is working.  What did you do to optimize the performance of your classifier?
 
@@ -118,7 +119,7 @@ Ultimately I searched on two scales using YCrCb 3-channel HOG features plus spat
 ### Video Implementation
 
 #### 1. Provide a link to your final video output.  Your pipeline should perform reasonably well on the entire project video (somewhat wobbly or unstable bounding boxes are ok as long as you are identifying the vehicles most of the time with minimal false positives.)
-Here's a [link to my video result](./output_project.mp4)
+Here's a [link to my video result](output_project.mp4)
 
 
 #### 2. Describe how (and identify where in your code) you implemented some kind of filter for false positives and some method for combining overlapping bounding boxes.
